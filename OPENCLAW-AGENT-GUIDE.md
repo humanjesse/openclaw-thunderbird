@@ -113,12 +113,10 @@ Always pass `--output json` when you need to parse the response.
 
 ### Sending Email
 
-- **Compose for review (preferred):**
+- **Compose email (opens window for review):**
   `mcporter call thunderbird.composeMail to="addr" subject="subj" body="text"`
   Opens a Thunderbird compose window. User clicks Send manually.
-
-- **Send immediately (use with caution):**
-  `mcporter call thunderbird.sendMail to="addr" subject="subj" body="text" --output json`
+  `sendMail` is an alias — both open a compose window.
   Both support: `cc`, `bcc`, `isHtml`, `from`, `attachments`
 
 ### Replying & Forwarding
@@ -141,9 +139,9 @@ Always pass `--output json` when you need to parse the response.
 
 ## Rules
 
-1. **Never auto-send without explicit permission.** Default to `composeMail` (opens
-   draft for review). Only use `sendMail` when the user says "send it" or "go ahead."
-2. **Confirm before replying or forwarding.** Summarize what you'll say and to whom.
+1. **All email tools open a compose window.** Neither `sendMail` nor `composeMail` auto-sends.
+   The user always clicks Send in Thunderbird.
+2. **Confirm before composing, replying, or forwarding.** Summarize what you'll say and to whom.
    Wait for approval.
 3. **Summarize, don't dump.** When reporting search results, give a concise summary
    (sender, subject, date, one-line preview). Don't paste raw JSON.
@@ -530,7 +528,7 @@ Agent:  Found 4 emails mentioning "API migration" from January:
 | Agent can't find config | MCPorter config not in workspace | Ensure `config/mcporter.json` exists in the agent's workspace directory |
 | Search returns nothing | Gloda index not built yet | Let Thunderbird run for a while to index mail; or use `searchMessages` instead of `fullTextSearch` |
 | Emails seem stale | IMAP folder not synced | Click the folder in Thunderbird's UI to force sync |
-| Agent sends without asking | AGENTS.md rules not specific enough | Strengthen the "never auto-send" rule in AGENTS.md |
+| Agent composes without asking | AGENTS.md rules not specific enough | Strengthen the "confirm before composing" rule in AGENTS.md |
 | Agent uses wrong email account | `from` not specified | Add account details to TOOLS.md so the agent knows which identity to use |
 | Compose window doesn't open | Thunderbird minimized or on another desktop | Check Thunderbird — the window may have opened behind other windows |
 
@@ -538,9 +536,9 @@ Agent:  Found 4 emails mentioning "API migration" from January:
 
 ## Security Checklist
 
-- [ ] The Thunderbird MCP extension only listens on **localhost** — no remote access
-- [ ] There is **no authentication** on the HTTP server — any local process can call it
-- [ ] `sendMail` sends **immediately** — ensure AGENTS.md rules require confirmation
+- [x] **Bearer token auth** — random token generated per Thunderbird session, written to `~/.thunderbird-mcp-token`, required on every request
+- [x] **DNS rebinding protection** — Host header validated, only `localhost`/`127.0.0.1`/`[::1]` accepted
+- [x] **No auto-send** — both `sendMail` and `composeMail` open a compose window; user must click Send
 - [ ] The agent has access to **all email accounts** in Thunderbird
 - [ ] Email content is **never persisted to memory** unless you explicitly ask
 - [ ] Tool permissions in `openclaw.json` should be **minimal** — only grant what's needed
@@ -556,8 +554,8 @@ Agent:  Found 4 emails mentioning "API migration" from January:
 | Search headers | `mcporter call thunderbird.searchMessages query="term"` |
 | Full-text search | `mcporter call thunderbird.fullTextSearch query="term"` |
 | Read email | `mcporter call thunderbird.getMessage messageId="..." folderPath="..."` |
-| Send immediately | `mcporter call thunderbird.sendMail to="..." subject="..." body="..."` |
-| Compose (review) | `mcporter call thunderbird.composeMail to="..." subject="..." body="..."` |
+| Compose email | `mcporter call thunderbird.sendMail to="..." subject="..." body="..."` |
+| Compose email | `mcporter call thunderbird.composeMail to="..." subject="..." body="..."` |
 | Reply | `mcporter call thunderbird.replyToMessage messageId="..." folderPath="..." body="..."` |
 | Reply all | `mcporter call thunderbird.replyToMessage messageId="..." folderPath="..." body="..." replyAll=true` |
 | Forward | `mcporter call thunderbird.forwardMessage messageId="..." folderPath="..." to="..."` |

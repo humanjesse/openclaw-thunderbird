@@ -153,10 +153,10 @@ mcporter call thunderbird.fullTextSearch query="project deadline"
 **Read a specific email (use id and folderPath from search results):**
 mcporter call thunderbird.getMessage messageId="msg-id@example.com" folderPath="mailbox://..."
 
-**Send an email immediately (no confirmation):**
+**Compose an email (opens window for review):**
 mcporter call thunderbird.sendMail to="recipient@example.com" subject="Hello" body="Message here"
 
-**Open compose window for user review before sending:**
+**Same as above (alias):**
 mcporter call thunderbird.composeMail to="recipient@example.com" subject="Draft" body="Please review"
 
 **Reply to an email:**
@@ -176,8 +176,8 @@ mcporter call thunderbird.listCalendars
 
 ### Guidelines
 
-- Always use `composeMail` (opens window for review) unless the user explicitly asks you to send immediately
-- When sending on behalf of the user, confirm the recipient and content before calling `sendMail`
+- Both `sendMail` and `composeMail` open a compose window for user review — neither auto-sends
+- Always confirm the recipient and content before composing
 - Use `searchMessages` for filtering by date/sender/subject; use `fullTextSearch` for searching email body content
 - To read an email, first search for it, then use `getMessage` with the id and folderPath from the search results
 - Always use `--output json` flag when you need to parse the response programmatically
@@ -239,16 +239,16 @@ Once everything is set up, your agent can handle requests like:
 | Agent says it can't find mcporter | Install MCPorter globally (`npm i -g mcporter`) or ensure `npx mcporter` works |
 | Search returns no results | Thunderbird's Gloda index may not be built yet. Let Thunderbird run for a while to index your mail |
 | Emails are stale / missing recent | IMAP folders may need a manual sync. Click the folder in Thunderbird to refresh |
-| sendMail fails | Check that the `compose.send` permission is granted and the email account is properly configured |
+| sendMail/composeMail fails | Check that the email account is properly configured and Thunderbird is running |
 | Unicode/emoji garbled in emails | This is handled automatically, but ensure both Node.js and Thunderbird use UTF-8 |
 
 ---
 
 ## Security Notes
 
-- The Thunderbird extension listens **only on localhost** (127.0.0.1). No remote access is possible.
-- There is **no authentication** on the HTTP server. Any local process can call it while Thunderbird is running.
-- `sendMail` sends **immediately without confirmation**. Instruct your agent to prefer `composeMail` for safety.
+- The HTTP server requires **Bearer token authentication**. A random token is generated on each Thunderbird startup and written to `~/.thunderbird-mcp-token`. The bridge reads this automatically.
+- **DNS rebinding protection**: the server validates the `Host` header and only accepts `localhost`, `127.0.0.1`, or `[::1]`.
+- **No auto-send**: both `sendMail` and `composeMail` open a compose window. Emails are never sent without the user clicking Send.
 - The agent has access to **all email accounts** configured in Thunderbird. Use OpenClaw's tool permission system to restrict access if needed.
 
 ---
@@ -261,8 +261,8 @@ Once everything is set up, your agent can handle requests like:
 | Search headers | `mcporter call thunderbird.searchMessages query="term"` |
 | Full-text search | `mcporter call thunderbird.fullTextSearch query="term"` |
 | Read email | `mcporter call thunderbird.getMessage messageId="..." folderPath="..."` |
-| Send immediately | `mcporter call thunderbird.sendMail to="..." subject="..." body="..."` |
-| Compose (review) | `mcporter call thunderbird.composeMail to="..." subject="..." body="..."` |
+| Compose email | `mcporter call thunderbird.sendMail to="..." subject="..." body="..."` |
+| Compose email | `mcporter call thunderbird.composeMail to="..." subject="..." body="..."` |
 | Reply | `mcporter call thunderbird.replyToMessage messageId="..." folderPath="..." body="..."` |
 | Forward | `mcporter call thunderbird.forwardMessage messageId="..." folderPath="..." to="..."` |
 | Search contacts | `mcporter call thunderbird.searchContacts query="name"` |
