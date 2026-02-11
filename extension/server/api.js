@@ -59,8 +59,8 @@ const tools = [
   },
   {
     name: "sendMail",
-    title: "Send Mail (Auto)",
-    description: "Compose and send an email immediately without user intervention",
+    title: "Send Mail",
+    description: "Open a compose window with the given email for user review before sending",
     inputSchema: {
       type: "object",
       properties: {
@@ -78,7 +78,7 @@ const tools = [
   },
   {
     name: "composeMail",
-    title: "Compose Mail (Review)",
+    title: "Compose Mail",
     description: "Open a compose window for user review before sending",
     inputSchema: {
       type: "object",
@@ -519,65 +519,9 @@ var mcpServer = class extends ExtensionCommon.ExtensionAPI {
               }
             }
 
-            async function sendMail(to, subject, body, cc, bcc, isHtml, from, attachments) {
-              try {
-                const details = {
-                  to: (to || "").split(",").map(s => s.trim()).filter(Boolean),
-                  subject: subject || "",
-                  body: body || "",
-                  isPlainText: !isHtml,
-                };
-                if (cc) details.cc = cc.split(",").map(s => s.trim()).filter(Boolean);
-                if (bcc) details.bcc = bcc.split(",").map(s => s.trim()).filter(Boolean);
-
-                // Find sender identity
-                if (from) {
-                  const identity = findIdentity(from);
-                  if (identity) {
-                    // Look up the account for this identity to get identityId
-                    for (const account of MailServices.accounts.accounts) {
-                      for (const id of account.identities) {
-                        if (id.key === identity.key) {
-                          details.identityId = id.key;
-                          break;
-                        }
-                      }
-                      if (details.identityId) break;
-                    }
-                  }
-                }
-
-                const tab = await context.extension.tabManager
-                  ? null : null; // compose API available via messenger namespace
-
-                // Use WebExtension compose API for auto-send
-                const composeTab = await context.extension
-                  .apiManager.global.messenger.compose.beginNew(details);
-
-                // Attach files if provided
-                if (attachments && Array.isArray(attachments)) {
-                  for (const filePath of attachments) {
-                    try {
-                      const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-                      file.initWithPath(filePath);
-                      if (file.exists()) {
-                        await context.extension.apiManager.global.messenger.compose.addAttachment(
-                          composeTab.id,
-                          { file: Services.io.newFileURI(file), name: file.leafName }
-                        );
-                      }
-                    } catch {}
-                  }
-                }
-
-                await context.extension.apiManager.global.messenger.compose.sendMessage(
-                  composeTab.id,
-                  { mode: "sendNow" }
-                );
-                return { success: true, message: "Email sent" };
-              } catch (e) {
-                return { error: e.toString() };
-              }
+            function sendMail(to, subject, body, cc, bcc, isHtml, from, attachments) {
+              // Delegates to composeMail — always opens a compose window for user review
+              return composeMail(to, subject, body, cc, bcc, isHtml, from, attachments);
             }
 
             function replyToMessage(messageId, folderPath, body, replyAll, isHtml, to, cc, bcc, from, attachments) {
@@ -784,7 +728,7 @@ var mcpServer = class extends ExtensionCommon.ExtensionAPI {
                 case "getMessage":
                   return await getMessage(args.messageId, args.folderPath);
                 case "sendMail":
-                  return await sendMail(args.to, args.subject, args.body, args.cc, args.bcc, args.isHtml, args.from, args.attachments);
+                  return sendMail(args.to, args.subject, args.body, args.cc, args.bcc, args.isHtml, args.from, args.attachments);
                 case "composeMail":
                   return composeMail(args.to, args.subject, args.body, args.cc, args.bcc, args.isHtml, args.from, args.attachments);
                 case "replyToMessage":
@@ -800,12 +744,47 @@ var mcpServer = class extends ExtensionCommon.ExtensionAPI {
               }
             }
 
+            // -- Auth token generation --
+
+            const tokenBytes = new Uint8Array(32);
+            crypto.getRandomValues(tokenBytes);
+            const authToken = Array.from(tokenBytes, b => b.toString(16).padStart(2, "0")).join("");
+
+            // Write token to ~/.thunderbird-mcp-token
+            const tokenPath = Services.dirsvc.get("Home", Ci.nsIFile).path +
+              (Services.appinfo.OS === "WINNT" ? "\\" : "/") + ".thunderbird-mcp-token";
+            await IOUtils.writeUTF8(tokenPath, authToken, { mode: 0o600 });
+            console.log("Thunderbird MCP auth token written to", tokenPath);
+
             // -- HTTP server --
 
             const server = new HttpServer();
 
             server.registerPathHandler("/", (req, res) => {
               res.processAsync();
+
+              // DNS rebinding protection: validate Host header
+              const hostHeader = req.hasHeader("Host") ? req.getHeader("Host") : "";
+              // Strip port from host (handles both IPv4 "localhost:8765" and IPv6 "[::1]:8765")
+              const hostname = hostHeader.startsWith("[")
+                ? (hostHeader.match(/^(\[.*?\])/)?.[1] || hostHeader)
+                : hostHeader.replace(/:\d+$/, "");
+              const allowedHosts = ["localhost", "127.0.0.1", "[::1]"];
+              if (!allowedHosts.includes(hostname.toLowerCase())) {
+                res.setStatusLine("1.1", 403, "Forbidden");
+                res.write("Forbidden: invalid Host header");
+                res.finish();
+                return;
+              }
+
+              // Bearer token authentication
+              const authHeader = req.hasHeader("Authorization") ? req.getHeader("Authorization") : "";
+              if (authHeader !== `Bearer ${authToken}`) {
+                res.setStatusLine("1.1", 401, "Unauthorized");
+                res.write("Unauthorized: invalid or missing Bearer token");
+                res.finish();
+                return;
+              }
 
               if (req.method !== "POST") {
                 res.setStatusLine("1.1", 405, "Method Not Allowed");

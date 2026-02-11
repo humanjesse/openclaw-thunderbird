@@ -7,8 +7,8 @@ MCP (Model Context Protocol) server that gives AI agents access to Thunderbird e
 ```
 MCP Client (stdio JSON-RPC 2.0)
     ↓
-mcp-bridge.cjs (Node.js)
-    ↓ HTTP POST localhost:8765
+mcp-bridge.cjs (Node.js)  ← reads ~/.thunderbird-mcp-token
+    ↓ HTTP POST localhost:8765 (Bearer token auth + Host validation)
 Thunderbird Extension
     ↓ Thunderbird APIs
 Email / Contacts / Calendars
@@ -112,7 +112,7 @@ Read full email content by ID and folder path (from search results).
 ```
 
 ### sendMail
-Send an email immediately (auto-send, no user confirmation).
+Open a compose window for user review before sending. Same interface as `composeMail`.
 ```json
 {
   "name": "sendMail",
@@ -127,7 +127,7 @@ Send an email immediately (auto-send, no user confirmation).
 ```
 
 ### composeMail
-Open a compose window for user review before sending (safer).
+Open a compose window for user review before sending.
 ```json
 {
   "name": "composeMail",
@@ -179,13 +179,17 @@ List all configured calendars.
 { "name": "listCalendars", "arguments": {} }
 ```
 
+## Security
+
+- **Bearer token authentication**: On startup, the extension generates a random 64-character hex token and writes it to `~/.thunderbird-mcp-token` (mode 0600). All HTTP requests must include an `Authorization: Bearer <token>` header. The bridge reads this file automatically on each request.
+- **DNS rebinding protection**: The HTTP server validates the `Host` header and only accepts requests from `localhost`, `127.0.0.1`, or `[::1]`. Requests with any other Host header receive a `403 Forbidden` response.
+- **No auto-send**: Both `sendMail` and `composeMail` open a compose window for user review. Emails are never sent without user confirmation.
+
 ## Known Limitations
 
 - **IMAP folders may be stale**: Thunderbird doesn't always sync IMAP folders in the background. Click a folder in the UI to force sync, or the extension will attempt `updateFolder()` as a best-effort.
-- **Compose window tools** (`composeMail`, `replyToMessage`, `forwardMessage`) open a window — user must click Send manually.
-- **sendMail** sends immediately without confirmation. Use `composeMail` if you want human review.
+- **Compose window tools** (`sendMail`, `composeMail`, `replyToMessage`, `forwardMessage`) open a window — user must click Send manually.
 - **Port 8765** is hardcoded. If another service uses this port, the extension won't start.
-- **No authentication** on the HTTP server. Only listens on localhost, but any local process can access it.
 
 ## Troubleshooting
 

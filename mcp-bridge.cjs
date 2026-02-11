@@ -8,6 +8,9 @@
 
 const http = require('http');
 const readline = require('readline');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 const THUNDERBIRD_PORT = 8765;
 const REQUEST_TIMEOUT = 30000;
@@ -47,6 +50,16 @@ function sanitizeJson(data) {
   sanitized = sanitized.replace(/(?<!\\)\n/g, '\\n');
   sanitized = sanitized.replace(/(?<!\\)\t/g, '\\t');
   return sanitized;
+}
+
+const TOKEN_PATH = path.join(os.homedir(), '.thunderbird-mcp-token');
+
+function getAuthToken() {
+  try {
+    return fs.readFileSync(TOKEN_PATH, 'utf8').trim();
+  } catch (e) {
+    throw new Error(`Cannot read auth token from ${TOKEN_PATH}: ${e.message}. Is Thunderbird running with the MCP extension?`);
+  }
 }
 
 async function handleMessage(line) {
@@ -90,6 +103,7 @@ async function handleMessage(line) {
 function forwardToThunderbird(message) {
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify(message);
+    const token = getAuthToken();
 
     const req = http.request({
       hostname: 'localhost',
@@ -98,7 +112,8 @@ function forwardToThunderbird(message) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Content-Length': Buffer.byteLength(postData)
+        'Content-Length': Buffer.byteLength(postData),
+        'Authorization': `Bearer ${token}`
       }
     }, (res) => {
       const chunks = [];
