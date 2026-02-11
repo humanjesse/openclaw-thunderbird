@@ -756,7 +756,8 @@ var mcpServer = class extends ExtensionCommon.ExtensionAPI {
             // Write token to ~/.thunderbird-mcp-token
             const tokenPath = Services.dirsvc.get("Home", Ci.nsIFile).path +
               (Services.appinfo.OS === "WINNT" ? "\\" : "/") + ".thunderbird-mcp-token";
-            await IOUtils.writeUTF8(tokenPath, authToken, { mode: 0o600 });
+            await IOUtils.writeUTF8(tokenPath, authToken);
+            await IOUtils.setPermissions(tokenPath, 0o600);
             console.log("Thunderbird MCP auth token written to", tokenPath);
 
             // -- HTTP server --
