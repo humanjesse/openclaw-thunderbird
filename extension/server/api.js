@@ -745,10 +745,13 @@ var mcpServer = class extends ExtensionCommon.ExtensionAPI {
             }
 
             // -- Auth token generation --
+            // crypto.getRandomValues is not available in experiment API context,
+            // so we use Thunderbird's UUID service (two v4 UUIDs = 64 hex chars)
 
-            const tokenBytes = new Uint8Array(32);
-            crypto.getRandomValues(tokenBytes);
-            const authToken = Array.from(tokenBytes, b => b.toString(16).padStart(2, "0")).join("");
+            const authToken = (
+              Services.uuid.generateUUID().toString().replace(/[{}-]/g, "") +
+              Services.uuid.generateUUID().toString().replace(/[{}-]/g, "")
+            );
 
             // Write token to ~/.thunderbird-mcp-token
             const tokenPath = Services.dirsvc.get("Home", Ci.nsIFile).path +
