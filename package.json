@@ -1,0 +1,11 @@
+{
+  "name": "thunderbird-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for AI agents to access Thunderbird email, contacts, and calendars",
+  "main": "mcp-bridge.cjs",
+  "scripts": {
+    "build": "./scripts/build.sh",
+    "install-ext": "./scripts/install.sh"
+  },
+  "license": "MIT"
+}

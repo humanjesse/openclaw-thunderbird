@@ -1,0 +1,23 @@
+[
+  {
+    "namespace": "searchIndex",
+    "description": "Full-text search via Thunderbird's Gloda index",
+    "functions": [
+      {
+        "name": "query",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "details",
+            "type": "object",
+            "properties": {
+              "text": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    ]
+  }
+]

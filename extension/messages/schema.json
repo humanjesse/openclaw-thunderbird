@@ -1,0 +1,54 @@
+[
+  {
+    "namespace": "messagesMcp",
+    "description": "Message retrieval and header search operations",
+    "functions": [
+      {
+        "name": "getMessage",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "messageId",
+            "type": "string"
+          },
+          {
+            "name": "folderPath",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "searchMessages",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "query",
+            "type": "string"
+          },
+          {
+            "name": "startDate",
+            "type": "string",
+            "optional": true
+          },
+          {
+            "name": "endDate",
+            "type": "string",
+            "optional": true
+          },
+          {
+            "name": "maxResults",
+            "type": "number",
+            "optional": true
+          },
+          {
+            "name": "sortOrder",
+            "type": "string",
+            "optional": true
+          }
+        ]
+      }
+    ]
+  }
+]

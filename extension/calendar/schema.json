@@ -1,0 +1,14 @@
+[
+  {
+    "namespace": "calendarMcp",
+    "description": "Calendar operations",
+    "functions": [
+      {
+        "name": "listCalendars",
+        "type": "function",
+        "async": true,
+        "parameters": []
+      }
+    ]
+  }
+]

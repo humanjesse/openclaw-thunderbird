@@ -1,0 +1,19 @@
+[
+  {
+    "namespace": "contactsMcp",
+    "description": "Contact search operations",
+    "functions": [
+      {
+        "name": "search",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "query",
+            "type": "string"
+          }
+        ]
+      }
+    ]
+  }
+]

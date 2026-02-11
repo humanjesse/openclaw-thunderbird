@@ -1,0 +1,52 @@
+[
+  {
+    "namespace": "composeMcp",
+    "description": "Email composition, sending, reply, and forward operations",
+    "functions": [
+      {
+        "name": "sendMail",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "details",
+            "type": "object",
+            "properties": {
+              "to": { "type": "string" },
+              "subject": { "type": "string" },
+              "body": { "type": "string" },
+              "cc": { "type": "string", "optional": true },
+              "bcc": { "type": "string", "optional": true },
+              "isHtml": { "type": "boolean", "optional": true },
+              "from": { "type": "string", "optional": true },
+              "attachments": { "type": "array", "items": { "type": "string" }, "optional": true }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      {
+        "name": "composeMail",
+        "type": "function",
+        "async": true,
+        "parameters": [
+          {
+            "name": "details",
+            "type": "object",
+            "properties": {
+              "to": { "type": "string" },
+              "subject": { "type": "string" },
+              "body": { "type": "string" },
+              "cc": { "type": "string", "optional": true },
+              "bcc": { "type": "string", "optional": true },
+              "isHtml": { "type": "boolean", "optional": true },
+              "from": { "type": "string", "optional": true },
+              "attachments": { "type": "array", "items": { "type": "string" }, "optional": true }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    ]
+  }
+]
