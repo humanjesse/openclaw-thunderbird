@@ -519,45 +519,67 @@ var mcpServer = class extends ExtensionCommon.ExtensionAPI {
               }
             }
 
-            async function sendMail(to, subject, body, cc, bcc, isHtml, from, attachments) {
-              try {
-                const compose = context.extension.apiManager.global.messenger.compose;
-                const details = {
-                  to: (to || "").split(",").map(s => s.trim()).filter(Boolean),
-                  subject: subject || "",
-                  body: body || "",
-                  isPlainText: !isHtml,
-                };
-                if (cc) details.cc = cc.split(",").map(s => s.trim()).filter(Boolean);
-                if (bcc) details.bcc = bcc.split(",").map(s => s.trim()).filter(Boolean);
+            function sendMail(to, subject, body, cc, bcc, isHtml, from, attachments) {
+              return new Promise((resolve) => {
+                try {
+                  // Set up compose fields (same as composeMail)
+                  const svc = Cc["@mozilla.org/messengercompose;1"].getService(Ci.nsIMsgComposeService);
+                  const params = Cc["@mozilla.org/messengercompose/composeparams;1"].createInstance(Ci.nsIMsgComposeParams);
+                  const fields = Cc["@mozilla.org/messengercompose/composefields;1"].createInstance(Ci.nsIMsgCompFields);
 
-                if (from) {
-                  const identity = findIdentity(from);
-                  if (identity) details.identityId = identity.key;
+                  fields.to = to || "";
+                  fields.cc = cc || "";
+                  fields.bcc = bcc || "";
+                  fields.subject = subject || "";
+
+                  const formatted = formatBodyHtml(body, isHtml);
+                  fields.body = (isHtml && formatted.includes("<html"))
+                    ? formatted
+                    : `<html><head><meta charset="UTF-8"></head><body>${formatted}</body></html>`;
+
+                  addAttachments(fields, attachments);
+                  params.type = Ci.nsIMsgCompType.New;
+                  params.format = Ci.nsIMsgCompFormat.HTML;
+                  params.composeFields = fields;
+                  setComposeIdentity(params, from, null);
+
+                  // Watch for compose window, then auto-send from it
+                  const observer = {
+                    observe(aSubject, aTopic) {
+                      if (aTopic !== "domwindowopened") return;
+                      const win = aSubject;
+                      win.addEventListener("load", function onLoad() {
+                        win.removeEventListener("load", onLoad);
+                        if (!win.location?.href?.includes("messengercompose")) return;
+                        Services.ww.unregisterNotification(observer);
+                        // Poll until gMsgCompose is ready, then send
+                        const waitAndSend = () => {
+                          if (win.gMsgCompose) {
+                            try {
+                              win.gMsgCompose.sendMsg(
+                                Ci.nsIMsgDeliverMode.Now,
+                                win.gMsgCompose.identity,
+                                null, null, null
+                              );
+                              resolve({ success: true, message: "Email sent" });
+                            } catch (e) {
+                              resolve({ error: e.toString() });
+                            }
+                          } else {
+                            win.setTimeout(waitAndSend, 100);
+                          }
+                        };
+                        win.setTimeout(waitAndSend, 200);
+                      });
+                    },
+                  };
+
+                  Services.ww.registerNotification(observer);
+                  svc.OpenComposeWindowWithParams(null, params);
+                } catch (e) {
+                  resolve({ error: e.toString() });
                 }
-
-                const tab = await compose.beginNew(details);
-
-                if (attachments && Array.isArray(attachments)) {
-                  for (const filePath of attachments) {
-                    try {
-                      const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-                      file.initWithPath(filePath);
-                      if (file.exists()) {
-                        await compose.addAttachment(tab.id, {
-                          file: Services.io.newFileURI(file),
-                          name: file.leafName,
-                        });
-                      }
-                    } catch {}
-                  }
-                }
-
-                await compose.sendMessage(tab.id, { mode: "sendNow" });
-                return { success: true, message: "Email sent" };
-              } catch (e) {
-                return { error: e.toString() };
-              }
+              });
             }
 
             function replyToMessage(messageId, folderPath, body, replyAll, isHtml, to, cc, bcc, from, attachments) {
