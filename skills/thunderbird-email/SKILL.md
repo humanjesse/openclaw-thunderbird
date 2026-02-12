@@ -6,7 +6,9 @@ metadata: {"clawbot":{"emoji":"📬"},"requires":{"bins":["mcporter"]},"install"
 
 # Thunderbird Email
 
-Access the user's Thunderbird email via `mcporter call thunderbird.<tool>`.
+Use the `exec` tool to run `mcporter` shell commands. Every command below is a shell command you run via `exec`.
+
+Example: to list accounts, run `exec("mcporter call thunderbird.listAccounts")`
 
 ## Reading
 
