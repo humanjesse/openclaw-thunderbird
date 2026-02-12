@@ -52,14 +52,18 @@ function sanitizeJson(data) {
   return sanitized;
 }
 
-const TOKEN_PATH = path.join(os.homedir(), '.thunderbird-mcp-token');
+const TOKEN_PATHS = [
+  path.join(os.homedir(), '.thunderbird-mcp-token'),
+  path.join(os.homedir(), 'snap', 'thunderbird', 'common', '.thunderbird-mcp-token'),
+];
 
 function getAuthToken() {
-  try {
-    return fs.readFileSync(TOKEN_PATH, 'utf8').trim();
-  } catch (e) {
-    throw new Error(`Cannot read auth token from ${TOKEN_PATH}: ${e.message}. Is Thunderbird running with the MCP extension?`);
+  for (const tokenPath of TOKEN_PATHS) {
+    try {
+      return fs.readFileSync(tokenPath, 'utf8').trim();
+    } catch {}
   }
+  throw new Error(`Cannot read auth token. Checked: ${TOKEN_PATHS.join(', ')}. Is Thunderbird running with the MCP extension?`);
 }
 
 async function handleMessage(line) {
