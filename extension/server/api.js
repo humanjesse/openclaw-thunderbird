@@ -60,7 +60,7 @@ const tools = [
   {
     name: "sendMail",
     title: "Send Mail",
-    description: "Open a compose window with the given email for user review before sending",
+    description: "Compose and send an email immediately without user interaction",
     inputSchema: {
       type: "object",
       properties: {
@@ -519,9 +519,45 @@ var mcpServer = class extends ExtensionCommon.ExtensionAPI {
               }
             }
 
-            function sendMail(to, subject, body, cc, bcc, isHtml, from, attachments) {
-              // Delegates to composeMail — always opens a compose window for user review
-              return composeMail(to, subject, body, cc, bcc, isHtml, from, attachments);
+            async function sendMail(to, subject, body, cc, bcc, isHtml, from, attachments) {
+              try {
+                const compose = context.extension.apiManager.global.messenger.compose;
+                const details = {
+                  to: (to || "").split(",").map(s => s.trim()).filter(Boolean),
+                  subject: subject || "",
+                  body: body || "",
+                  isPlainText: !isHtml,
+                };
+                if (cc) details.cc = cc.split(",").map(s => s.trim()).filter(Boolean);
+                if (bcc) details.bcc = bcc.split(",").map(s => s.trim()).filter(Boolean);
+
+                if (from) {
+                  const identity = findIdentity(from);
+                  if (identity) details.identityId = identity.key;
+                }
+
+                const tab = await compose.beginNew(details);
+
+                if (attachments && Array.isArray(attachments)) {
+                  for (const filePath of attachments) {
+                    try {
+                      const file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+                      file.initWithPath(filePath);
+                      if (file.exists()) {
+                        await compose.addAttachment(tab.id, {
+                          file: Services.io.newFileURI(file),
+                          name: file.leafName,
+                        });
+                      }
+                    } catch {}
+                  }
+                }
+
+                await compose.sendMessage(tab.id, { mode: "sendNow" });
+                return { success: true, message: "Email sent" };
+              } catch (e) {
+                return { error: e.toString() };
+              }
             }
 
             function replyToMessage(messageId, folderPath, body, replyAll, isHtml, to, cc, bcc, from, attachments) {
@@ -728,7 +764,7 @@ var mcpServer = class extends ExtensionCommon.ExtensionAPI {
                 case "getMessage":
                   return await getMessage(args.messageId, args.folderPath);
                 case "sendMail":
-                  return sendMail(args.to, args.subject, args.body, args.cc, args.bcc, args.isHtml, args.from, args.attachments);
+                  return await sendMail(args.to, args.subject, args.body, args.cc, args.bcc, args.isHtml, args.from, args.attachments);
                 case "composeMail":
                   return composeMail(args.to, args.subject, args.body, args.cc, args.bcc, args.isHtml, args.from, args.attachments);
                 case "replyToMessage":

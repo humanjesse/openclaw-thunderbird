@@ -19,8 +19,8 @@ Example: to list accounts, run `exec("mcporter call thunderbird.listAccounts")`
 
 ## Composing
 
-- `mcporter call thunderbird.sendMail to="addr" subject="subj" body="text"` — opens compose window for review
-- `mcporter call thunderbird.composeMail to="addr" subject="subj" body="text"` — same as sendMail
+- `mcporter call thunderbird.sendMail to="addr" subject="subj" body="text"` — sends immediately, no user interaction
+- `mcporter call thunderbird.composeMail to="addr" subject="subj" body="text"` — opens compose window for user review
 - Both support: `cc`, `bcc`, `isHtml=true`, `from="identity"`, `attachments`
 
 ## Reply & Forward
@@ -35,6 +35,7 @@ Example: to list accounts, run `exec("mcporter call thunderbird.listAccounts")`
 
 ## Rules
 
-- All compose tools open a window — the user clicks Send. Nothing auto-sends.
-- Confirm recipients and content before composing.
+- `sendMail` sends immediately. `composeMail` opens a window for review.
+- Always confirm recipients and content with the user before using `sendMail`.
+- Use `composeMail` when the user wants to review before sending.
 - Summarize search results concisely, don't dump raw JSON.
