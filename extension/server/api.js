@@ -557,7 +557,7 @@ var mcpServer = class extends ExtensionCommon.ExtensionAPI {
                           if (win.gMsgCompose) {
                             try {
                               win.gMsgCompose.sendMsg(
-                                Ci.nsIMsgDeliverMode.Now,
+                                Ci.nsIMsgCompDeliverMode.Now,
                                 win.gMsgCompose.identity,
                                 null, null, null
                               );
